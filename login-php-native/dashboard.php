@@ -15,7 +15,7 @@ if (!isset($_SESSION['username'])) {
 </head>
 <body>
     <div class="container">
-        <h2>Selamat Datang, <?php echo htmlspecialchars($_SESSION['username']); ?>!</h2>
+        <h2>JANCOK, <?php echo htmlspecialchars($_SESSION['username']); ?>!</h2>
         <p>Anda berhasil login ke halaman dashboard.</p>
         <a href="logout.php" class="logout-btn">Logout</a>
     </div>
