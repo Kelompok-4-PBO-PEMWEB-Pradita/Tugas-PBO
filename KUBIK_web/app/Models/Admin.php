@@ -2,22 +2,51 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Admin extends Model
+class Admin extends Authenticatable
 {
+    use Notifiable;
+
     protected $table = 'admins';
     protected $primaryKey = 'id_admin';
-    protected $fillable = ['name', 'email', 'password'];
-    public $timestamps = true;
+    public $incrementing = true;
+    protected $keyType = 'int';
+    public $timestamps = true; // admins table has created_at, updated_at
 
-    public function bookings()
+    protected $fillable = [
+        'name',
+        'email',
+        'password'
+    ];
+
+    protected $hidden = [
+        'password'
+    ];
+
+    // RELATIONS
+    public function bookings(): HasMany
     {
-        return $this->hasMany(Booking::class, 'id_admin');
+        return $this->hasMany(Booking::class, 'id_admin', 'id_admin');
     }
 
-    public function notifications()
+    public function adminNotifications(): HasMany
     {
-        return $this->hasMany(AdminNotification::class, 'id_admin');
+        return $this->hasMany(AdminNotification::class, 'id_admin', 'id_admin');
+    }
+
+    // SMART LOGIC HELPERS
+    // Approve a booking (set status approved, set actual_start, mark assets borrowed)
+    public function approveBooking(int $bookingId): bool
+    {
+        return Booking::approveByAdmin($bookingId, $this->id_admin);
+    }
+
+    // Verify return (mark completed and allow admin to set asset conditions)
+    public function verifyReturn(int $bookingId): bool
+    {
+        return Booking::verifyReturnByAdmin($bookingId, $this->id_admin);
     }
 }

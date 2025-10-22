@@ -7,16 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 class BookingAsset extends Model
 {
     protected $table = 'booking_assets';
-    protected $primaryKey = 'id_booking_asset';
-    protected $fillable = ['id_booking', 'id_asset'];
+    public $incrementing = false;
+    protected $primaryKey = null;
+    public $timestamps = false; // created_at handled manually if present
 
-    public function booking()
-    {
-        return $this->belongsTo(Booking::class, 'id_booking');
-    }
-
-    public function asset()
-    {
-        return $this->belongsTo(Asset::class, 'id_asset');
-    }
+    protected $fillable = [
+        'id_booking',
+        'id_asset',
+        'created_at'
+    ];
 }
