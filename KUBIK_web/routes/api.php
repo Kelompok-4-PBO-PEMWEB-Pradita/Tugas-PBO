@@ -1,95 +1,128 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\AdminController;
-use App\Http\Controllers\CategoryController;
-use App\Http\Controllers\TypeController;
-use App\Http\Controllers\AssetMasterController;
-use App\Http\Controllers\AssetController;
-use App\Http\Controllers\BookingController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\AdminNotificationController;
+use App\Http\Controllers\{
+    CategoryController,
+    TypeController,
+    AssetMasterController,
+    AssetController,
+    BookingController,
+    BookingAssetController,
+    NotificationController,
+    AdminNotificationController,
+    UserController,
+    AdminController
+};
 
-/*
-|--------------------------------------------------------------------------
-| API Routes - KUBIK Final Version
-|--------------------------------------------------------------------------
-|
-| Semua endpoint API untuk sistem peminjaman internal kampus Aplikasi KUBIK.
-| Setiap route mengikuti class diagram & smart logic versi final.
-|
-*/
-
-// =================== USER ===================
-Route::prefix('user')->group(function () {
-    Route::post('register', [UserController::class, 'register']);
-    Route::post('login', [UserController::class, 'login']);
-    Route::get('list', [UserController::class, 'index']);
-    Route::get('{id}', [UserController::class, 'show']);
+// ----------------------------------------------------
+//  TEST ROUTE (Cek apakah API aktif)
+// ----------------------------------------------------
+Route::get('/ping', function () {
+    return response()->json(['message' => 'KUBIK API is running successfully!']);
 });
 
-// =================== ADMIN ===================
-Route::prefix('admin')->group(function () {
-    Route::post('login', [AdminController::class, 'login']);
-    Route::get('list', [AdminController::class, 'index']);
-    Route::get('{id}', [AdminController::class, 'show']);
+// ----------------------------------------------------
+//  USER AUTHENTICATION & MANAGEMENT
+// ----------------------------------------------------
+Route::prefix('users')->group(function () {
+    Route::get('/', [UserController::class, 'index']);        // lihat semua user
+    Route::get('/{id}', [UserController::class, 'show']);     // lihat 1 user
+    Route::post('/register', [UserController::class, 'register']); // daftar
+    Route::post('/login', [UserController::class, 'login']);       // login
 });
 
-// =================== CATEGORY ===================
-Route::prefix('category')->group(function () {
+// ----------------------------------------------------
+//  ADMIN AUTHENTICATION & MANAGEMENT
+// ----------------------------------------------------
+Route::prefix('admins')->group(function () {
+    Route::get('/', [AdminController::class, 'index']);       // semua admin
+    Route::get('/{id}', [AdminController::class, 'show']);    // detail admin
+    Route::post('/register', [AdminController::class, 'register']); // daftar admin
+    Route::post('/login', [AdminController::class, 'login']);       // login admin
+});
+
+
+// ----------------------------------------------------
+//  CATEGORY MANAGEMENT
+// ----------------------------------------------------
+Route::prefix('categories')->group(function () {
     Route::get('/', [CategoryController::class, 'index']);
-    Route::post('create', [CategoryController::class, 'store']);
-    Route::get('{id}', [CategoryController::class, 'show']);
-    Route::put('{id}/update', [CategoryController::class, 'update']);
-    Route::delete('{id}/delete', [CategoryController::class, 'destroy']);
+    Route::get('/{id}', [CategoryController::class, 'show']);
+    Route::post('/', [CategoryController::class, 'store']);
+    Route::put('/{id}', [CategoryController::class, 'update']);
+    Route::delete('/{id}', [CategoryController::class, 'destroy']);
 });
 
-// =================== TYPE ===================
-Route::prefix('type')->group(function () {
+// ----------------------------------------------------
+//  TYPE MANAGEMENT
+// ----------------------------------------------------
+Route::prefix('types')->group(function () {
     Route::get('/', [TypeController::class, 'index']);
-    Route::post('create', [TypeController::class, 'store']);
-    Route::get('{id}', [TypeController::class, 'show']);
-    Route::put('{id}/update', [TypeController::class, 'update']);
-    Route::delete('{id}/delete', [TypeController::class, 'destroy']);
+    Route::get('/{id}', [TypeController::class, 'show']);
+    Route::post('/', [TypeController::class, 'store']);
+    Route::put('/{id}', [TypeController::class, 'update']);
+    Route::delete('/{id}', [TypeController::class, 'destroy']);
 });
 
-// =================== ASSET MASTER ===================
-Route::prefix('asset-master')->group(function () {
+// ----------------------------------------------------
+//  ASSET MASTER MANAGEMENT
+// ----------------------------------------------------
+Route::prefix('asset-masters')->group(function () {
     Route::get('/', [AssetMasterController::class, 'index']);
-    Route::post('create', [AssetMasterController::class, 'store']);
-    Route::get('{id}', [AssetMasterController::class, 'show']);
-    Route::put('{id}/update', [AssetMasterController::class, 'update']);
-    Route::delete('{id}/delete', [AssetMasterController::class, 'destroy']);
+    Route::get('/{id}', [AssetMasterController::class, 'show']);
+    Route::post('/', [AssetMasterController::class, 'store']);
+    Route::put('/{id}', [AssetMasterController::class, 'update']);
+    Route::delete('/{id}', [AssetMasterController::class, 'destroy']);
 });
 
-// =================== ASSET ===================
-Route::prefix('asset')->group(function () {
+// ----------------------------------------------------
+//  ASSET (UNIT INDIVIDUAL)
+// ----------------------------------------------------
+Route::prefix('assets')->group(function () {
     Route::get('/', [AssetController::class, 'index']);
-    Route::get('{id}', [AssetController::class, 'show']);
-    Route::put('{id}/condition', [AssetController::class, 'updateCondition']);
+    Route::get('/{id}', [AssetController::class, 'show']);
+    Route::put('/{id}/condition', [AssetController::class, 'updateCondition']);
+    Route::put('/{id}/borrow', [AssetController::class, 'markBorrowed']);
+    Route::put('/{id}/return', [AssetController::class, 'markReturned']);
 });
 
-// =================== BOOKING ===================
-Route::prefix('booking')->group(function () {
+// ----------------------------------------------------
+//  BOOKING (PEMINJAMAN)
+// ----------------------------------------------------
+Route::prefix('bookings')->group(function () {
     Route::get('/', [BookingController::class, 'index']);
-    Route::get('{id}', [BookingController::class, 'show']);
-    Route::post('create', [BookingController::class, 'store']);
-    Route::put('{id}/approve', [BookingController::class, 'approve']);
-    Route::put('{id}/reject', [BookingController::class, 'reject']);
-    Route::put('{id}/request-return', [BookingController::class, 'requestReturn']);
-    Route::put('{id}/verify-return', [BookingController::class, 'verifyReturn']);
+    Route::post('/', [BookingController::class, 'store']); // user ajukan peminjaman
+    Route::put('/{id}/approve', [BookingController::class, 'approve']); // admin setujui
+    Route::put('/{id}/reject', [BookingController::class, 'reject']);   // admin tolak
+    Route::put('/{id}/request-return', [BookingController::class, 'requestReturn']); // user ajukan pengembalian
+    Route::put('/{id}/confirm-return', [BookingController::class, 'confirmReturn']); // admin verifikasi
 });
 
-// =================== NOTIFICATION (USER) ===================
-Route::prefix('notification')->group(function () {
-    Route::get('/user/{id}', [NotificationController::class, 'getUserNotifications']);
-    Route::put('/read/{id}', [NotificationController::class, 'markAsRead']);
+// ----------------------------------------------------
+//  BOOKING-ASSET (PIVOT MANY TO MANY)
+// ----------------------------------------------------
+Route::prefix('booking-assets')->group(function () {
+    Route::get('/{id_booking}', [BookingAssetController::class, 'index']); // lihat daftar aset per booking
+    Route::post('/attach', [BookingAssetController::class, 'attachAsset']); // tambah aset ke booking
+    Route::post('/detach', [BookingAssetController::class, 'detachAsset']); // hapus aset dari booking
 });
 
-// =================== ADMIN NOTIFICATION ===================
-Route::prefix('admin-notification')->group(function () {
-    Route::get('/{id_admin}', [AdminNotificationController::class, 'getAdminNotifications']);
-    Route::put('/read/{id}', [AdminNotificationController::class, 'markAsRead']);
+// ----------------------------------------------------
+//  NOTIFICATION SYSTEM
+// ----------------------------------------------------
+Route::prefix('notifications')->group(function () {
+    Route::get('/', [NotificationController::class, 'index']);
+    Route::get('/admin/{id_admin}', [NotificationController::class, 'showByAdmin']);
+    Route::put('/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::delete('/{id}', [NotificationController::class, 'destroy']);
+    Route::delete('/cleanup/auto', [NotificationController::class, 'autoCleanup']);
+});
+
+// ----------------------------------------------------
+//  ADMIN NOTIFICATION MANAGEMENT
+// ----------------------------------------------------
+Route::prefix('admin-notifications')->group(function () {
+    Route::get('/{id_admin}', [AdminNotificationController::class, 'index']);
+    Route::put('/{id_admin}/read-all', [AdminNotificationController::class, 'markAllAsRead']);
+    Route::delete('/{id_admin}/clear', [AdminNotificationController::class, 'clearOldNotifications']);
 });

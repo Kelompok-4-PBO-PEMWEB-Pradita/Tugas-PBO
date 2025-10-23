@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Type extends Model
 {
@@ -16,27 +16,22 @@ class Type extends Model
 
     protected $fillable = [
         'id_type',
-        'id_category',
         'name'
     ];
-
-    public function category(): BelongsTo
-    {
-        return $this->belongsTo(Category::class, 'id_category', 'id_category');
-    }
 
     public function assetMasters(): HasMany
     {
         return $this->hasMany(AssetMaster::class, 'id_type', 'id_type');
     }
 
-    // SMART LOGIC: generate id_type TYP-000001 if not provided
+    // SMART LOGIC: generate id_type in format CAT-000001 if not set
     protected static function booted()
     {
         static::creating(function ($model) {
             if (empty($model->id_type)) {
+                // generate next numeric by counting current rows
                 $count = static::query()->count() + 1;
-                $model->id_type = 'TYP-' . str_pad($count, 6, '0', STR_PAD_LEFT);
+                $model->id_type = 'CAT-' . str_pad($count, 6, '0', STR_PAD_LEFT);
             }
         });
     }
