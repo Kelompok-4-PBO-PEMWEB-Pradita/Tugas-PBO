@@ -111,7 +111,7 @@ Route::prefix('booking-assets')->group(function () {
 //  NOTIFICATION SYSTEM
 // ----------------------------------------------------
 Route::prefix('notifications')->group(function () {
-    Route::get('/', [NotificationController::class, 'index']);
+    Route::get('/{id_user}', [NotificationController::class, 'index']);
     Route::get('/admin/{id_admin}', [NotificationController::class, 'showByAdmin']);
     Route::put('/{id}/read', [NotificationController::class, 'markAsRead']);
     Route::delete('/{id}', [NotificationController::class, 'destroy']);

@@ -10,7 +10,7 @@ class AdminNotification extends Model
     protected $primaryKey = 'id_notif_admin';
     public $incrementing = true;
     protected $keyType = 'int';
-    public $timestamps = false; // created_at only
+    public $timestamps = false;
 
     protected $fillable = [
         'id_admin',
@@ -24,7 +24,8 @@ class AdminNotification extends Model
         return $this->belongsTo(Admin::class, 'id_admin', 'id_admin');
     }
 
-    public static function sendToAdmin(?int $adminId, string $message)
+    // SMART LOGIC: kirim notifikasi ke admin tertentu
+    public static function sendToAdmin(int $adminId, string $message)
     {
         return static::create([
             'id_admin' => $adminId,

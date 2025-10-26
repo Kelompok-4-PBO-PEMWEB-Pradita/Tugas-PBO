@@ -11,13 +11,12 @@ use App\Models\AssetMaster;
 use App\Models\Admin;
 use App\Models\User;
 use App\Models\Notification;
+use App\Models\AdminNotification;
 use Carbon\Carbon;
 
 class BookingController extends Controller
 {
-    /**
-     * Tampilkan semua data booking (untuk admin)
-     */
+    /** Tampilkan semua data booking (untuk admin) */
     public function index()
     {
         $bookings = Booking::with(['user:id_user,name', 'assets:id_asset,id_master,status'])
@@ -30,10 +29,7 @@ class BookingController extends Controller
         ]);
     }
 
-    /**
-     * User membuat permintaan peminjaman
-     * Smart Logic: status otomatis 'pending'
-     */
+    /** User membuat permintaan peminjaman */
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -63,32 +59,40 @@ class BookingController extends Controller
                 $booking->assets()->attach($assetId);
             }
 
-            // Notifikasi ke admin
-            Notification::create([
-                'id_admin' => Admin::inRandomOrder()->first()->id_admin,
-                'message' => 'Permintaan peminjaman baru dari user ID: ' . $request->id_user
-            ]);
+            // Kirim notifikasi ke semua admin
+            $admins = Admin::all();
+            foreach ($admins as $admin) {
+                AdminNotification::create([
+                    'id_admin' => $admin->id_admin,
+                    'message' => 'Permintaan peminjaman baru dari user ID: ' . $request->id_user,
+                    'is_read' => false,
+                    'created_at' => now()
+                ]);
+            }
 
             DB::commit();
-            return response()->json(['message' => 'Permintaan peminjaman berhasil dikirim', 'data' => $booking], 201);
+            return response()->json([
+                'message' => 'Permintaan peminjaman berhasil dikirim',
+                'data' => $booking
+            ], 201);
+
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['message' => 'Gagal membuat booking', 'error' => $e->getMessage()], 500);
+            return response()->json([
+                'message' => 'Gagal membuat booking',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
-    /**
-     * Admin menyetujui permintaan
-     * Smart Logic:
-     * - update status aset menjadi borrowed
-     * - ubah status booking ke approved
-     */
+    /** Admin menyetujui permintaan */
     public function approve($id)
     {
         $booking = Booking::with('assets')->find($id);
 
         if (!$booking) return response()->json(['message' => 'Booking tidak ditemukan'], 404);
-        if ($booking->status !== 'pending') return response()->json(['message' => 'Hanya booking dengan status pending yang dapat disetujui'], 400);
+        if ($booking->status !== 'pending')
+            return response()->json(['message' => 'Hanya booking dengan status pending yang dapat disetujui'], 400);
 
         DB::transaction(function () use ($booking) {
             $booking->update(['status' => 'approved']);
@@ -97,18 +101,19 @@ class BookingController extends Controller
                 $asset->update(['status' => 'borrowed']);
             }
 
+            // Notifikasi ke user
             Notification::create([
-                'id_admin' => Admin::inRandomOrder()->first()->id_admin,
-                'message' => 'Peminjaman disetujui untuk booking ID: ' . $booking->id_booking
+                'id_user' => $booking->id_user,
+                'message' => 'Peminjaman kamu telah disetujui untuk booking ID: ' . $booking->id_booking,
+                'is_read' => false,
+                'created_at' => now()
             ]);
         });
 
         return response()->json(['message' => 'Booking disetujui dan aset ditandai sebagai dipinjam']);
     }
 
-    /**
-     * Admin menolak permintaan
-     */
+    /** Admin menolak permintaan */
     public function reject($id)
     {
         $booking = Booking::find($id);
@@ -116,20 +121,18 @@ class BookingController extends Controller
 
         $booking->update(['status' => 'rejected']);
 
+        // Notifikasi ke user
         Notification::create([
-            'id_admin' => Admin::inRandomOrder()->first()->id_admin,
-            'message' => 'Booking ID ' . $id . ' ditolak'
+            'id_user' => $booking->id_user,
+            'message' => 'Peminjaman kamu ditolak untuk booking ID: ' . $id,
+            'is_read' => false,
+            'created_at' => now()
         ]);
 
         return response()->json(['message' => 'Booking ditolak']);
     }
 
-    /**
-     * User mengajukan pengembalian
-     * Smart Logic:
-     * - status otomatis "pending" (menunggu verif admin)
-     * - sistem menghitung keterlambatan dalam jam
-     */
+    /** User mengajukan pengembalian */
     public function requestReturn($id)
     {
         $booking = Booking::with('assets')->find($id);
@@ -147,10 +150,16 @@ class BookingController extends Controller
             'late_return' => $lateHours
         ]);
 
-        Notification::create([
-            'id_admin' => Admin::inRandomOrder()->first()->id_admin,
-            'message' => 'User mengajukan pengembalian untuk booking ID: ' . $id
-        ]);
+        // Notifikasi ke semua admin
+        $admins = Admin::all();
+        foreach ($admins as $admin) {
+            AdminNotification::create([
+                'id_admin' => $admin->id_admin,
+                'message' => 'User mengajukan pengembalian untuk booking ID: ' . $id,
+                'is_read' => false,
+                'created_at' => now()
+            ]);
+        }
 
         return response()->json([
             'message' => 'Permintaan pengembalian dikirim, menunggu verifikasi admin',
@@ -158,13 +167,7 @@ class BookingController extends Controller
         ]);
     }
 
-    /**
-     * Admin memverifikasi pengembalian
-     * Smart Logic:
-     * - update status ke completed
-     * - ubah aset ke available
-     * - kirim notifikasi & update stok otomatis
-     */
+    /** Admin memverifikasi pengembalian */
     public function confirmReturn($id)
     {
         $booking = Booking::with('assets')->find($id);
@@ -177,7 +180,6 @@ class BookingController extends Controller
                 $asset->update(['status' => 'available']);
             }
 
-            // sinkronisasi stok tersedia
             foreach ($booking->assets as $asset) {
                 $availableCount = Asset::where('id_master', $asset->id_master)
                     ->where('status', 'available')
@@ -187,9 +189,12 @@ class BookingController extends Controller
                     ->update(['stock_available' => $availableCount]);
             }
 
+            // Notifikasi ke user
             Notification::create([
-                'id_admin' => Admin::inRandomOrder()->first()->id_admin,
-                'message' => 'Pengembalian disetujui untuk booking ID: ' . $booking->id_booking
+                'id_user' => $booking->id_user,
+                'message' => 'Pengembalian kamu telah diverifikasi untuk booking ID: ' . $booking->id_booking,
+                'is_read' => false,
+                'created_at' => now()
             ]);
         });
 

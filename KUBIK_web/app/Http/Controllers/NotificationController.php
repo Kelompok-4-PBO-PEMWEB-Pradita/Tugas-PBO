@@ -9,64 +9,37 @@ use Carbon\Carbon;
 
 class NotificationController extends Controller
 {
-    /**
-     * Tampilkan semua notifikasi
-     * Smart Logic: hanya menampilkan 30 notifikasi terakhir
-     */
-    public function index()
+    // tampilkan 30 notifikasi terakhir milik user tertentu
+    public function index($id_user)
     {
-        $notifications = Notification::orderBy('created_at', 'desc')
-            ->limit(30)
-            ->get();
-
-        return response()->json([
-            'message' => 'Daftar notifikasi terbaru',
-            'data' => $notifications
-        ]);
-    }
-
-    /**
-     * Tampilkan notifikasi berdasarkan admin
-     */
-    public function showByAdmin($id_admin)
-    {
-        $notifications = Notification::where('id_admin', $id_admin)
+        $notifications = Notification::where('id_user', $id_user)
             ->orderBy('created_at', 'desc')
             ->limit(30)
             ->get();
 
-        if ($notifications->isEmpty()) {
-            return response()->json(['message' => 'Tidak ada notifikasi untuk admin ini']);
-        }
-
-        return response()->json(['data' => $notifications]);
+        return response()->json([
+            'message' => 'Daftar notifikasi untuk user ID: ' . $id_user,
+            'data' => $notifications
+        ]);
     }
 
-    /**
-     * Tandai notifikasi sudah dibaca
-     * Smart Logic: ubah is_read menjadi true
-     */
-    public function markAsRead($id)
+    // tandai notifikasi user sudah dibaca
+    public function markAsRead($id_notif)
     {
-        $notif = Notification::find($id);
-
+        $notif = Notification::find($id_notif);
         if (!$notif) {
             return response()->json(['message' => 'Notifikasi tidak ditemukan'], 404);
         }
 
         $notif->update(['is_read' => true]);
 
-        return response()->json(['message' => 'Notifikasi ditandai sebagai sudah dibaca']);
+        return response()->json(['message' => 'Notifikasi berhasil ditandai sebagai dibaca']);
     }
 
-    /**
-     * Hapus notifikasi (hanya notifikasi lama)
-     * Smart Logic: hanya bisa hapus jika lebih dari 7 hari
-     */
-    public function destroy($id)
+    // hapus notifikasi user jika > 7 hari
+    public function destroy($id_notif)
     {
-        $notif = Notification::find($id);
-
+        $notif = Notification::find($id_notif);
         if (!$notif) {
             return response()->json(['message' => 'Notifikasi tidak ditemukan'], 404);
         }
@@ -77,14 +50,10 @@ class NotificationController extends Controller
         }
 
         $notif->delete();
-
         return response()->json(['message' => 'Notifikasi berhasil dihapus']);
     }
 
-    /**
-     * Smart System tambahan:
-     * Bersihkan otomatis notifikasi yang berusia > 30 hari
-     */
+    // pembersihan otomatis notifikasi > 30 hari
     public function autoCleanup()
     {
         $deleted = Notification::where('created_at', '<', Carbon::now()->subDays(30))->delete();

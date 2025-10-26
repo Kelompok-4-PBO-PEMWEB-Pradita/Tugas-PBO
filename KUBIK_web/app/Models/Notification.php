@@ -10,7 +10,7 @@ class Notification extends Model
     protected $primaryKey = 'id_notif';
     public $incrementing = true;
     protected $keyType = 'int';
-    public $timestamps = false; // created_at only
+    public $timestamps = false;
 
     protected $fillable = [
         'id_user',
@@ -24,7 +24,7 @@ class Notification extends Model
         return $this->belongsTo(User::class, 'id_user', 'id_user');
     }
 
-    // SMART LOGIC helper
+    // SMART LOGIC: kirim notifikasi ke user
     public static function sendToUser(int $userId, string $message)
     {
         return static::create([
