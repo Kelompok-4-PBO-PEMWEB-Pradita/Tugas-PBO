@@ -73,15 +73,7 @@ class AssetMasterController extends Controller
             'stock_total' => $request->stock_total,
             'stock_available' => $request->stock_total,
         ]);
-
-        // Smart Logic: generate assets automatically
-        for ($i = 1; $i <= $request->stock_total; $i++) {
-            Asset::create([
-                'id_master' => $assetMaster->id_master,
-                'asset_condition' => 'good'
-            ]);
-        }
-
+        
         return response()->json([
             'message' => 'Asset master created successfully with all assets generated.',
             'data' => $assetMaster

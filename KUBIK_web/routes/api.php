@@ -91,11 +91,12 @@ Route::prefix('assets')->group(function () {
 // ----------------------------------------------------
 Route::prefix('bookings')->group(function () {
     Route::get('/', [BookingController::class, 'index']);
-    Route::post('/', [BookingController::class, 'store']); // user ajukan peminjaman
-    Route::put('/{id}/approve', [BookingController::class, 'approve']); // admin setujui
-    Route::put('/{id}/reject', [BookingController::class, 'reject']);   // admin tolak
-    Route::put('/{id}/request-return', [BookingController::class, 'requestReturn']); // user ajukan pengembalian
-    Route::put('/{id}/confirm-return', [BookingController::class, 'confirmReturn']); // admin verifikasi
+    Route::post('/{id_user}', [BookingController::class, 'store']); // user ajukan peminjaman
+    Route::put('/{id_booking}/{id_admin}/approve', [BookingController::class, 'approve']); // admin setujui
+    Route::put('/{id_booking}/{id_admin}/reject', [BookingController::class, 'reject']);   // admin tolak
+    Route::put('/{id_booking}/request-return', [BookingController::class, 'requestReturn']); // user ajukan pengembalian
+    Route::get('/user/{id_user}', [BookingController::class, 'userBookings']); // user melihat semua booking miliknya
+    Route::put('/{id_booking}/{id_admin}/confirm-return', [BookingController::class, 'confirmReturn']); // admin verifikasi
 });
 
 // ----------------------------------------------------

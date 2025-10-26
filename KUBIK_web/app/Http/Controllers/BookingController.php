@@ -16,6 +16,26 @@ use Carbon\Carbon;
 
 class BookingController extends Controller
 {
+    /** User melihat semua booking yang dia buat */
+public function userBookings($id_user)
+{
+    $bookings = Booking::with(['assets:id_asset,id_master,status'])
+        ->where('id_user', $id_user)
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+    if ($bookings->isEmpty()) {
+        return response()->json([
+            'message' => 'Belum ada peminjaman yang dibuat oleh anda'
+        ]);
+    }
+
+    return response()->json([
+        'message' => 'Daftar semua peminjaman milik anda',
+        'data' => $bookings
+    ]);
+}
+
     /** Tampilkan semua data booking (untuk admin) */
     public function index()
     {
@@ -30,10 +50,9 @@ class BookingController extends Controller
     }
 
     /** User membuat permintaan peminjaman */
-    public function store(Request $request)
+    public function store(Request $request, $id_user)
     {
         $validator = Validator::make($request->all(), [
-            'id_user' => 'required|exists:users,id_user',
             'assets' => 'required|array|min:1',
             'assets.*' => 'exists:assets,id_asset',
             'start_time' => 'required|date',
@@ -46,25 +65,22 @@ class BookingController extends Controller
 
         DB::beginTransaction();
         try {
-            // Buat booking baru
             $booking = Booking::create([
-                'id_user' => $request->id_user,
+                'id_user' => $id_user,
                 'status' => 'pending',
                 'start_time' => $request->start_time,
                 'end_time' => $request->end_time
             ]);
 
-            // Hubungkan aset yang dipinjam
             foreach ($request->assets as $assetId) {
                 $booking->assets()->attach($assetId);
             }
 
-            // Kirim notifikasi ke semua admin
             $admins = Admin::all();
             foreach ($admins as $admin) {
                 AdminNotification::create([
                     'id_admin' => $admin->id_admin,
-                    'message' => 'Permintaan peminjaman baru dari user ID: ' . $request->id_user,
+                    'message' => 'Permintaan peminjaman baru dari user ID: ' . $id_user,
                     'is_read' => false,
                     'created_at' => now()
                 ]);
@@ -86,22 +102,24 @@ class BookingController extends Controller
     }
 
     /** Admin menyetujui permintaan */
-    public function approve($id)
+    public function approve($id_booking, $id_admin)
     {
-        $booking = Booking::with('assets')->find($id);
+        $booking = Booking::with('assets')->find($id_booking);
 
         if (!$booking) return response()->json(['message' => 'Booking tidak ditemukan'], 404);
         if ($booking->status !== 'pending')
             return response()->json(['message' => 'Hanya booking dengan status pending yang dapat disetujui'], 400);
 
-        DB::transaction(function () use ($booking) {
-            $booking->update(['status' => 'approved']);
+        DB::transaction(function () use ($booking, $id_admin) {
+            $booking->update([
+                'status' => 'approved',
+                'id_admin' => $id_admin
+            ]);
 
             foreach ($booking->assets as $asset) {
                 $asset->update(['status' => 'borrowed']);
             }
 
-            // Notifikasi ke user
             Notification::create([
                 'id_user' => $booking->id_user,
                 'message' => 'Peminjaman kamu telah disetujui untuk booking ID: ' . $booking->id_booking,
@@ -110,32 +128,34 @@ class BookingController extends Controller
             ]);
         });
 
-        return response()->json(['message' => 'Booking disetujui dan aset ditandai sebagai dipinjam']);
+        return response()->json(['message' => 'Booking disetujui oleh admin ID: ' . $id_admin]);
     }
 
     /** Admin menolak permintaan */
-    public function reject($id)
+    public function reject($id_booking, $id_admin)
     {
-        $booking = Booking::find($id);
+        $booking = Booking::find($id_booking);
         if (!$booking) return response()->json(['message' => 'Booking tidak ditemukan'], 404);
 
-        $booking->update(['status' => 'rejected']);
+        $booking->update([
+            'status' => 'rejected',
+            'id_admin' => $id_admin
+        ]);
 
-        // Notifikasi ke user
         Notification::create([
             'id_user' => $booking->id_user,
-            'message' => 'Peminjaman kamu ditolak untuk booking ID: ' . $id,
+            'message' => 'Peminjaman kamu ditolak untuk booking ID: ' . $id_booking,
             'is_read' => false,
             'created_at' => now()
         ]);
 
-        return response()->json(['message' => 'Booking ditolak']);
+        return response()->json(['message' => 'Booking ditolak oleh admin ID: ' . $id_admin]);
     }
 
     /** User mengajukan pengembalian */
-    public function requestReturn($id)
+    public function requestReturn($id_booking)
     {
-        $booking = Booking::with('assets')->find($id);
+        $booking = Booking::with('assets')->find($id_booking);
         if (!$booking) return response()->json(['message' => 'Booking tidak ditemukan'], 404);
 
         $returnTime = Carbon::now();
@@ -145,17 +165,16 @@ class BookingController extends Controller
             : 0;
 
         $booking->update([
-            'status' => 'pending', // menunggu verifikasi pengembalian
+            'status' => 'pending',
             'return_at' => $returnTime,
             'late_return' => $lateHours
         ]);
 
-        // Notifikasi ke semua admin
         $admins = Admin::all();
         foreach ($admins as $admin) {
             AdminNotification::create([
                 'id_admin' => $admin->id_admin,
-                'message' => 'User mengajukan pengembalian untuk booking ID: ' . $id,
+                'message' => 'User mengajukan pengembalian untuk booking ID: ' . $id_booking,
                 'is_read' => false,
                 'created_at' => now()
             ]);
@@ -168,13 +187,16 @@ class BookingController extends Controller
     }
 
     /** Admin memverifikasi pengembalian */
-    public function confirmReturn($id)
+    public function confirmReturn($id_booking, $id_admin)
     {
-        $booking = Booking::with('assets')->find($id);
+        $booking = Booking::with('assets')->find($id_booking);
         if (!$booking) return response()->json(['message' => 'Booking tidak ditemukan'], 404);
 
-        DB::transaction(function () use ($booking) {
-            $booking->update(['status' => 'completed']);
+        DB::transaction(function () use ($booking, $id_admin) {
+            $booking->update([
+                'status' => 'completed',
+                'id_admin' => $id_admin
+            ]);
 
             foreach ($booking->assets as $asset) {
                 $asset->update(['status' => 'available']);
@@ -189,7 +211,6 @@ class BookingController extends Controller
                     ->update(['stock_available' => $availableCount]);
             }
 
-            // Notifikasi ke user
             Notification::create([
                 'id_user' => $booking->id_user,
                 'message' => 'Pengembalian kamu telah diverifikasi untuk booking ID: ' . $booking->id_booking,
@@ -198,6 +219,6 @@ class BookingController extends Controller
             ]);
         });
 
-        return response()->json(['message' => 'Pengembalian diverifikasi dan stok diperbarui']);
+        return response()->json(['message' => 'Pengembalian diverifikasi oleh admin ID: ' . $id_admin]);
     }
 }
