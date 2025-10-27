@@ -101,10 +101,9 @@ class TypeController extends Controller
         }
 
         // Smart Logic: Prevent deletion if still used
-        $usedInType = Type::where('id_type', $id)->exists();
         $usedInMaster = AssetMaster::where('id_type', $id)->exists();
 
-        if ($usedInType || $usedInMaster) {
+        if ($usedInMaster) {
             return response()->json([
                 'message' => 'Cannot delete type. It is still used by another record.'
             ], 400);

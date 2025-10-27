@@ -42,13 +42,13 @@ class AssetController extends Controller
     }
 
     /**
-     * Perbarui kondisi aset (misal: good, damaged, lost)
+     * Perbarui kondisi aset (misal: Good, Damaged, Lost)
      * Smart Logic: update stok master otomatis
      */
     public function updateCondition(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
-            'asset_condition' => 'required|in:good,damaged,lost'
+            'asset_condition' => 'required|in:Good,Damaged,Lost'
         ]);
 
         if ($validator->fails()) {
@@ -122,7 +122,7 @@ class AssetController extends Controller
     {
         $availableCount = Asset::where('id_master', $id_master)
             ->where('status', 'available')
-            ->where('asset_condition', 'good')
+            ->where('asset_condition', 'Good')
             ->count();
 
         AssetMaster::where('id_master', $id_master)

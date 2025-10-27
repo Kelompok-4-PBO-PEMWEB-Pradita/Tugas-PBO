@@ -101,10 +101,9 @@ class CategoryController extends Controller
         }
 
         // Smart Logic: Prevent deletion if still used
-        $usedInType = Type::where('id_category', $id)->exists();
         $usedInMaster = AssetMaster::where('id_category', $id)->exists();
 
-        if ($usedInType || $usedInMaster) {
+        if ($usedInMaster) {
             return response()->json([
                 'message' => 'Cannot delete category. It is still used by another record.'
             ], 400);

@@ -113,14 +113,14 @@ class AssetMasterController extends Controller
             for ($i = $currentAssetCount + 1; $i <= $request->stock_total; $i++) {
                 Asset::create([
                     'id_master' => $assetMaster->id_master,
-                    'asset_condition' => 'good'
+                    'asset_condition' => 'Good'
                 ]);
             }
         }
 
         $assetMaster->update([
             'stock_available' => Asset::where('id_master', $id)
-                                      ->where('asset_condition', 'good')->count()
+                                      ->where('asset_condition', 'Good')->count()
         ]);
 
         return response()->json([
