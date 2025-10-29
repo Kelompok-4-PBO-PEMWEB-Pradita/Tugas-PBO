@@ -67,7 +67,7 @@ public function userBookings($id_user)
         try {
             $booking = Booking::create([
                 'id_user' => $id_user,
-                'status' => 'pending',
+                'status' => 'Pending',
                 'start_time' => $request->start_time,
                 'end_time' => $request->end_time
             ]);
@@ -107,12 +107,12 @@ public function userBookings($id_user)
         $booking = Booking::with('assets')->find($id_booking);
 
         if (!$booking) return response()->json(['message' => 'Booking tidak ditemukan'], 404);
-        if ($booking->status !== 'pending')
-            return response()->json(['message' => 'Hanya booking dengan status pending yang dapat disetujui'], 400);
+        if ($booking->status !== 'Pending')
+            return response()->json(['message' => 'Hanya booking dengan status Pending yang dapat disetujui'], 400);
 
         DB::transaction(function () use ($booking, $id_admin) {
             $booking->update([
-                'status' => 'approved',
+                'status' => 'Approved',
                 'id_admin' => $id_admin
             ]);
 
@@ -138,7 +138,7 @@ public function userBookings($id_user)
         if (!$booking) return response()->json(['message' => 'Booking tidak ditemukan'], 404);
 
         $booking->update([
-            'status' => 'rejected',
+            'status' => 'Rejected',
             'id_admin' => $id_admin
         ]);
 
@@ -165,7 +165,7 @@ public function userBookings($id_user)
             : 0;
 
         $booking->update([
-            'status' => 'pending',
+            'status' => 'Pending',
             'return_at' => $returnTime,
             'late_return' => $lateHours
         ]);
@@ -194,7 +194,7 @@ public function userBookings($id_user)
 
         DB::transaction(function () use ($booking, $id_admin) {
             $booking->update([
-                'status' => 'completed',
+                'status' => 'Completed',
                 'id_admin' => $id_admin
             ]);
 

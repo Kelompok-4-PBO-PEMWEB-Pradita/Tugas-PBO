@@ -88,7 +88,7 @@ class AssetController extends Controller
             return response()->json(['message' => 'Aset sudah dipinjam'], 409);
         }
 
-        $asset->update(['status' => 'borrowed']);
+        $asset->update(['status' => 'Borrowed']);
 
         // Smart Logic: sinkron stok
         $this->syncStockAvailable($asset->id_master);
@@ -121,7 +121,7 @@ class AssetController extends Controller
     private function syncStockAvailable($id_master)
     {
         $availableCount = Asset::where('id_master', $id_master)
-            ->where('status', 'available')
+            ->where('status', 'Available')
             ->where('asset_condition', 'Good')
             ->count();
 

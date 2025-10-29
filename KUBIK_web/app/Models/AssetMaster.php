@@ -60,7 +60,7 @@ class AssetMaster extends Model
                     for ($i = 0; $i < $toCreate; $i++) {
                         Asset::create([
                             'id_master' => $model->id_master,
-                            'asset_condition' => 'good',
+                            'asset_condition' => 'Good',
                             'status' => 'available'
                         ]);
                     }

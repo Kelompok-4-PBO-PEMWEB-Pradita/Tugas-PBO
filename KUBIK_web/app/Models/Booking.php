@@ -46,16 +46,16 @@ class Booking extends Model
     {
         return DB::transaction(function () use ($userId, $assetIds, $startTime, $endTime) {
             // validate assets availability
-            $availableCount = Asset::whereIn('id_asset', $assetIds)->where('status', 'available')->count();
-            if ($availableCount !== count($assetIds)) {
-                throw new \Exception('Some assets are not available for booking');
+            $AvailableCount = Asset::whereIn('id_asset', $assetIds)->where('status', 'Available')->count();
+            if ($AvailableCount !== count($assetIds)) {
+                throw new \Exception('Some assets are not Available for booking');
             }
 
             $booking = static::create([
                 'id_user' => $userId,
                 'start_time' => $startTime,
                 'end_time' => $endTime,
-                'status' => 'pending'
+                'status' => 'Pending'
             ]);
 
             // attach assets (insert into booking_assets pivot)
@@ -72,12 +72,12 @@ class Booking extends Model
         });
     }
 
-    // Approve by admin: set status approved, set id_admin, set actual_start = now and mark assets as borrowed
+    // Approve by admin: set status Approved, set id_admin, set actual_start = now and mark assets as borrowed
     public static function approveByAdmin(int $bookingId, int $adminId): bool
     {
         return DB::transaction(function () use ($bookingId, $adminId) {
             $booking = static::findOrFail($bookingId);
-            $booking->status = 'approved';
+            $booking->status = 'Approved';
             $booking->id_admin = $adminId;
             // set actual_start to now as per discussion? (we removed actual_start earlier but in final we kept return_at only)
             // Based on previous final: we do not have actual_start; only record admin id
@@ -98,14 +98,14 @@ class Booking extends Model
         });
     }
 
-    // User requests return: set return_at and set status back to pending (await admin verification)
+    // User requests return: set return_at and set status back to Pending (await admin verification)
     public function requestReturn(): bool
     {
         return DB::transaction(function () {
             $this->return_at = Carbon::now();
             // calculate late_return in hours
             $this->late_return = max(0, Carbon::parse($this->return_at)->diffInHours(Carbon::parse($this->end_time)));
-            $this->status = 'pending';
+            $this->status = 'Pending';
             $this->save();
 
             // notify admin implemented in controller/notification system
@@ -113,7 +113,7 @@ class Booking extends Model
         });
     }
 
-    // Admin verifies return => set status completed and allow admin to update asset conditions
+    // Admin verifies return => set status Completed and allow admin to update asset conditions
     public static function verifyReturnByAdmin(int $bookingId, int $adminId): bool
     {
         return DB::transaction(function () use ($bookingId, $adminId) {
@@ -121,12 +121,12 @@ class Booking extends Model
 
             // set admin who verified
             $booking->id_admin = $adminId;
-            $booking->status = 'completed';
+            $booking->status = 'Completed';
             $booking->save();
 
-            // mark assets available
+            // mark assets Available
             $assetIds = DB::table('booking_assets')->where('id_booking', $bookingId)->pluck('id_asset')->toArray();
-            Asset::whereIn('id_asset', $assetIds)->update(['status' => 'available']);
+            Asset::whereIn('id_asset', $assetIds)->update(['status' => 'Available']);
 
             // recalc masters
             $masters = Asset::whereIn('id_asset', $assetIds)->select('id_master')->distinct()->pluck('id_master')->toArray();
