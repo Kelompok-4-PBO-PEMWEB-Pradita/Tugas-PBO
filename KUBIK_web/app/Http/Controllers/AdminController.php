@@ -33,7 +33,7 @@ class AdminController extends Controller
     }
 
     /**
-     * Register new admin (optional – can be used by super admin)
+     * Register new admin
      */
     public function register(Request $request)
     {
